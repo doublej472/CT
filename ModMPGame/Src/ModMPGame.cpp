@@ -21,6 +21,8 @@ struct FPlayerStats{
 	FLOAT Deaths;
 	FLOAT Score;
 	INT   GoalsScored;
+	UBOOL bIsReady;
+	INT PlayerID;
 };
 
 static TArray<FString>                   PreviousGameAdminIDs;
@@ -28,15 +30,34 @@ static TMap<FString, FPlayerStats>       CurrentGamePlayersByID;
 static TMap<APlayerController*, FString> PlayerIDsByController; // Only needed because PlayerController::Player is NULL when GameInfo::Logout is called
 
 // Combines ip address with cd key hash to uniquely identify a player even in the same network
-static FString GetPlayerID(UNetConnection* Con){
-	FString IP = Con->LowLevelGetRemoteAddress();
+static FStringTemp GetPlayerID(AController *C)
+{
+	APlayerController *PC = Cast<APlayerController>(C);
 
-	INT Pos = IP.InStr(":", true);
+	if (PC)
+	{
+		// IsA(UNetConnection::StaticClass()) returns false for TcpipConnection - WTF???
+		if (PC->Player->IsA<UViewport>())
+		{
+			return "__HOST__";
+		}
+		else
+		{ // Combine ip address with cd key hash to uniquely identify a player even in the same network
+			UNetConnection *Con = static_cast<UNetConnection *>(PC->Player);
+			FString IP = Con->LowLevelGetRemoteAddress();
 
-	if(Pos != -1)
-		return IP.Left(Pos) + Con->CDKeyHash;
+			INT Pos = IP.InStr(":", true);
 
-	return IP + Con->CDKeyHash;
+			if (Pos != -1)
+				return IP.Left(Pos) + Con->CDKeyHash;
+
+			return IP + Con->CDKeyHash;
+		}
+	}
+	else
+	{
+		return FStringTemp("__BOT__") + (C->PlayerReplicationInfo ? *C->PlayerReplicationInfo->PlayerName : "");
+	}
 }
 
 static struct FAdminControlExec : FExec{
@@ -70,7 +91,8 @@ void AAdminControl::Spawned(){
 			AdminControlEventLog.SetFilename(*EventLogFile);
 			AdminControlEventLog.Opened = 1; // Causes content to be appended to log file
 		}else{ // One log file per session
-			FFilename Filename = EventLogFile;
+			FFilename Filename = *EventLogFile;
+			GFileManager->MakeDirectory(*Filename.GetPath(), 1);
 
 			if(Filename.GetExtension() == "")
 				Filename += ".log";
@@ -148,7 +170,7 @@ void AAdminControl::execSaveStats(FFrame& Stack, void* Result){
 		if(PC->Player->IsA(UViewport::StaticClass()))
 			return;
 
-		PlayerID = GetPlayerID(static_cast<UNetConnection*>(PC->Player));
+		PlayerID = GetPlayerID(PC);
 		PlayerIDsByController[PC] = PlayerID;
 	}else{ // PC->Player == NULL happens when a player leaves the server. In that case we need to look up the ID using the controller
 		FString* Tmp = PlayerIDsByController.Find(PC);
@@ -169,6 +191,7 @@ void AAdminControl::execSaveStats(FFrame& Stack, void* Result){
 	Stats.Deaths      = PC->PlayerReplicationInfo->Deaths;
 	Stats.Score       = PC->PlayerReplicationInfo->Score;
 	Stats.GoalsScored = PC->PlayerReplicationInfo->GoalsScored;
+	Stats.bIsReady = false;
 }
 
 void AAdminControl::execRestoreStats(FFrame& Stack, void* Result){
@@ -184,7 +207,7 @@ void AAdminControl::execRestoreStats(FFrame& Stack, void* Result){
 		PC->PlayerReplicationInfo->bAdmin = 1; // The host is always an admin
 		// It doesn't make sense to restore anything else here as the host cannot leave and rejoin without stopping the server
 	}else{
-		FString PlayerID = GetPlayerID(static_cast<UNetConnection*>(PC->Player));
+		FString PlayerID = GetPlayerID(PC);
 		const FPlayerStats& Stats = CurrentGamePlayersByID[*PlayerID];
 
 		PlayerIDsByController[PC] = PlayerID;
@@ -197,6 +220,15 @@ void AAdminControl::execRestoreStats(FFrame& Stack, void* Result){
 	}
 }
 
+void AAdminControl::execResetAllStats(FFrame &Stack, void *Result)
+{
+	P_FINISH;
+
+	for (TMap<FString, FPlayerStats>::TIterator It(CurrentGamePlayersByID); It; ++It)
+	{
+		It.Value() = FPlayerStats();
+	}
+}
 /*
  * AdminService
  */
@@ -763,6 +795,314 @@ bool ABotSupport::ExecCmd(const char* Cmd, class APlayerController* PC){
 	}
 
 	return false;
+}
+
+/*
+ * SkinChanger
+ */
+
+void ASkinChanger::execSetCloneSkin(FFrame &Stack, void *Result)
+{
+	P_GET_OBJECT(AController, C);
+	P_GET_INT(SkinIndex);
+	P_FINISH;
+
+	if (!C)
+		return;
+
+	SkinsByPlayerID[*GetPlayerID(C)].CloneIndex = Clamp(SkinIndex, 0, CloneSkins.Num() - 1);
+
+	NextSkinUpdateTime = 0.0f;
+}
+
+void ASkinChanger::execSetTrandoSkin(FFrame &Stack, void *Result)
+{
+	P_GET_OBJECT(AController, C);
+	P_GET_INT(SkinIndex);
+	P_FINISH;
+
+	if (!C)
+		return;
+
+	SkinsByPlayerID[*GetPlayerID(C)].TrandoIndex = Clamp(SkinIndex, 0, TrandoSkins.Num() - 1);
+
+	NextSkinUpdateTime = 0.0f;
+}
+
+/*
+ * Stupid solution for a stupid issue:
+ * Changing a Pawns Skin via RepSkin only shows up on clients if it is actually replicated, i.e. the client can see the Pawn.
+ * If a player joins a match and the RepSkin has been set before he joined, it is not visible.
+ * Also if the Pawn is out of sight it is despawned and respawned when it gets back. Again, no skin change.
+ * That's why the skins are updated periodically by switching between the Shader and the Diffuse texture.
+ * This is necessary because the property needs to actually have a different value for the new Skin to be applied on clients.
+ * Switching between shader and Diffuse is the best way to do that because visually it is only a short flicker that is only visible when bumpmapping is enabled.
+ */
+INT ASkinChanger::Tick(FLOAT DeltaTime, ELevelTick TickType)
+{
+	INT Result = Super::Tick(DeltaTime, TickType);
+
+	static bool bUseShaders = true;
+
+	NextSkinUpdateTime -= DeltaTime;
+
+	if (NextSkinUpdateTime <= 0.0f)
+	{
+		if (bUseShaders)
+			NextSkinUpdateTime = 30.0f;
+		else
+			NextSkinUpdateTime = 0.1f; // Only show the diffuse for a very short amount of time before switching back to the shader which we actually want
+
+		for (AController *C = Level->ControllerList; C; C = C->nextController)
+		{
+			if (!C->Pawn)
+				continue;
+
+			FString PlayerID = GetPlayerID(C);
+			FSkinEntry *Skin = SkinsByPlayerID.Find(*PlayerID);
+			APawn *Pawn = C->Pawn;
+
+			if (Skin)
+			{
+				static FName NMPClone("MPClone");
+				static FName NMPTrandoshan("MPTrandoshan");
+
+				UBOOL IsClone = Pawn->IsA(NMPClone);
+				UBOOL IsTrando = Pawn->IsA(NMPTrandoshan);
+
+				if (!IsClone && !IsTrando)
+					continue;
+
+				if (bUseShaders)
+				{
+					if (IsClone)
+						Pawn->RepSkin = CloneSkins[Skin->CloneIndex];
+					else if (IsTrando)
+						Pawn->RepSkin = TrandoSkins[Skin->TrandoIndex];
+
+					if (Pawn->Skins.Num() == 0)
+						Pawn->Skins.AddItem(Pawn->RepSkin);
+					else
+						Pawn->Skins[0] = Pawn->RepSkin;
+				}
+				else
+				{
+					if (IsClone)
+						Pawn->RepSkin = CloneSkins[Skin->CloneIndex]->Diffuse;
+					else if (IsTrando)
+						Pawn->RepSkin = TrandoSkins[Skin->TrandoIndex]->Diffuse;
+				}
+			}
+			else if (RandomizeBotSkins && C->IsA<AAIController>())
+			{ // We have an AI controller without a skin, so generate a random one
+				FSkinEntry &NewSkin = SkinsByPlayerID[*PlayerID];
+
+				if (NextBotCloneSkin >= CloneSkins.Num())
+					NextBotCloneSkin = 0;
+
+				NewSkin.CloneIndex = NextBotCloneSkin++;
+
+				if (NextBotTrandoSkin >= TrandoSkins.Num())
+					NextBotTrandoSkin = 0;
+
+				NewSkin.TrandoIndex = NextBotTrandoSkin++;
+			}
+
+			C->Pawn->bReplicateMovement = 1;
+			C->Pawn->bNetDirty = 1;
+		}
+
+		bUseShaders = !bUseShaders;
+	}
+
+	// Check if a Pawn was seen by a player that wasn't seen previously and update skins if that is the case
+	for (AController *C = Level->ControllerList; C; C = C->nextController)
+	{
+		if (!C->Pawn)
+			continue;
+
+		FSkinEntry *Skin = SkinsByPlayerID.Find(*GetPlayerID(C));
+
+		if (!Skin)
+			continue;
+
+		UBOOL IsPlayer = C->IsA<APlayerController>();
+		INT NumSeenBy = 0;
+
+		for (AController *C2 = Level->ControllerList; C2; C2 = C2->nextController)
+		{
+			// We only care if a player was seen by a bot or vice versa. Bots seeing each other does not need to trigger a skin update
+			if ((IsPlayer || C2->IsA<APlayerController>()) && C2->LineOfSightTo(C->Pawn))
+				++NumSeenBy;
+		}
+
+		if (NumSeenBy > Skin->NumSeenBy)
+		{
+			NextSkinUpdateTime = 0.1f;
+			Skin->NumSeenBy = NumSeenBy;
+
+			break;
+		}
+
+		Skin->NumSeenBy = NumSeenBy;
+	}
+
+	return Result;
+}
+
+void ASkinChanger::Spawned()
+{
+	Super::Spawned();
+
+	// Clear skins every day since the IP of most players has probably changed.
+	if (Level->Day != LastSkinResetDay)
+	{
+		LastSkinResetDay = Level->Day;
+		SkinsByPlayerID.Empty();
+	}
+
+	NextBotCloneSkin = static_cast<INT>(appFrand() * CloneSkins.Num());
+	NextBotTrandoSkin = static_cast<INT>(appFrand() * TrandoSkins.Num());
+}
+
+TMap<FString, ASkinChanger::FSkinEntry> ASkinChanger::SkinsByPlayerID;
+INT ASkinChanger::LastSkinResetDay;
+
+/*
+ * MatchManager
+ */
+
+void AMatchManager::execSetPlayerReadyState(FFrame &Stack, void *Result)
+{
+	P_GET_OBJECT(APlayerController, PC);
+	P_GET_UBOOL(IsReady);
+	P_FINISH;
+
+	if (!PC)
+		return;
+
+	FString PlayerID;
+
+	if (PC->Player)
+	{
+		if (PC->Player->IsA(UViewport::StaticClass()))
+			return;
+
+		PlayerID = GetPlayerID(PC);
+	}
+
+	// Get the stats for this player, if there is no change needed just return
+	FPlayerStats &Stats = CurrentGamePlayersByID[*PlayerID];
+	if (Stats.bIsReady == IsReady)
+		return;
+
+	Stats.bIsReady = IsReady;
+	if (IsReady)
+	{
+		nNumReadyPlayers += 1;
+		TryFinishReadyCheck();
+	}
+	else
+	{
+		nNumReadyPlayers -= 1;
+	}
+}
+
+void AMatchManager::execGetPlayerReadyState(FFrame &Stack, void *Result)
+{
+	P_GET_OBJECT(APlayerController, PC);
+	P_FINISH;
+
+	FString PlayerID;
+
+	if (PC->Player)
+	{
+		if (PC->Player->IsA(UViewport::StaticClass()))
+			return;
+
+		PlayerID = GetPlayerID(PC);
+	}
+
+	// Get the stats for this player, if there is no change needed just return
+	FPlayerStats &Stats = CurrentGamePlayersByID[*PlayerID];
+	*static_cast<UBOOL *>(Result) = Stats.bIsReady;
+}
+
+void AMatchManager::TryFinishReadyCheck()
+{
+	if (nNumReadyPlayers == GetActivePlayerCount())
+	{
+		for (TMap<FString, FPlayerStats>::TIterator It(CurrentGamePlayersByID); It; ++It)
+		{
+			FPlayerStats &Stats = It.Value();
+			Stats.bIsReady = false;
+		}
+
+		nNumReadyPlayers = 0;
+		bReadyCheckActive = false;
+		LiveReset();
+	}
+}
+
+/*
+ * CombatLogger
+ */
+
+static FOutputDeviceFile CombatLogger;
+
+void ACombatLogger::Spawned()
+{
+	Super::Spawned();
+
+	if (!CombatLogger.Opened)
+	{
+		if (AppendCombatLog)
+		{ // Everything goes into the file that is specified in the ini
+			FFilename Filename = *CombatLogFile;
+			GFileManager->MakeDirectory(*Filename.GetPath(), 1);
+			CombatLogger.SetFilename(*CombatLogFile);
+			CombatLogger.Opened = 1; // Causes content to be appended to log file
+		}
+		else
+		{ // One log file per session
+			FFilename Filename = *CombatLogFile;
+			GFileManager->MakeDirectory(*Filename.GetPath(), 1);
+
+			if (Filename.GetExtension() == "")
+				Filename += ".log";
+
+			CombatLogger.SetFilename(*FString::Printf("%s_%i-%i-%i_%i-%i-%i.%s",
+													  *Filename.GetBaseFilePath(),
+													  Level->Month,
+													  Level->Day,
+													  Level->Year,
+													  Level->Hour,
+													  Level->Minute,
+													  Level->Second,
+													  *Filename.GetExtension()));
+
+			GLog->Logf("Starting Combat Log at: %s", CombatLogger.Filename);
+		}
+	}
+
+	CombatLogger.Unbuffered = 1;
+	CombatLogger.Timestamp = CombatLogTimeStamp;
+	CombatLogger.CallLogHook = 0;
+}
+
+void ACombatLogger::LogEvent(const TCHAR *Msg, FName Event)
+{
+	CombatLogger.Log(static_cast<EName>(Event.GetIndex()), Msg);
+	GLog->Log(static_cast<EName>(Event.GetIndex()), Msg);
+}
+
+void ACombatLogger::execLogEvent(FFrame &Stack, void *Result)
+{
+	P_GET_STR(Msg);
+	P_GET_NAME(Tag);
+	P_FINISH;
+
+	LogEvent(*Msg, Tag);
 }
 
 /*

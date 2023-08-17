@@ -11,3 +11,4 @@ if /I "%1" == "debug" (
 if /I not "%CMD%" == "clean" set CMD="build"
 
 "%VS71COMNTOOLS%\..\IDE\devenv.com" /%CMD% %CONFIG% CT.sln
+pause

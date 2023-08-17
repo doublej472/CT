@@ -93,6 +93,80 @@ public:
 	virtual bool ExecCmd(const char* Cmd, class APlayerController* PC);
 };
 
+class MODMPGAME_API ACombatLogger : public AAdminService
+{
+public:
+    FStringNoInit CombatLogFile;
+    BITFIELD AppendCombatLog : 1 GCC_PACK(4);
+    BITFIELD CombatLogTimeStamp : 1;
+    BITFIELD bLogging : 1;
+    void execLogEvent(FFrame &Stack, void *Result);
+    DECLARE_CLASS(ACombatLogger, AAdminService, 0 | CLASS_Config, ModMPGame)
+    virtual void Spawned();
+    void LogEvent(const TCHAR *Msg, FName Event);
+    DECLARE_NATIVES(ACombatLogger)
+};
+
+class MODMPGAME_API AMatchManager : public AAdminService
+{
+public:
+    INT nNumReadyPlayers;
+    BITFIELD bReadyCheckActive : 1 GCC_PACK(4);
+    void execSetPlayerReadyState(FFrame &Stack, void *Result);
+    void execGetPlayerReadyState(FFrame &Stack, void *Result);
+    INT GetActivePlayerCount()
+    {
+        DECLARE_NAME(GetActivePlayerCount);
+        struct
+        {
+            INT ReturnValue;
+        } Parms;
+        Parms.ReturnValue = 0;
+        ProcessEvent(NGetActivePlayerCount, &Parms);
+        return Parms.ReturnValue;
+    }
+    void PrintActivePlayerReadyState()
+    {
+        DECLARE_NAME(PrintActivePlayerReadyState);
+        ProcessEvent(NPrintActivePlayerReadyState, NULL);
+    }
+    void LiveReset()
+    {
+        DECLARE_NAME(LiveReset);
+        ProcessEvent(NLiveReset, NULL);
+    }
+    DECLARE_CLASS(AMatchManager, AAdminService, 0 | CLASS_Config, ModMPGame)
+    void TryFinishReadyCheck();
+    DECLARE_NATIVES(AMatchManager)
+};
+
+class MODMPGAME_API ASkinChanger : public AAdminService
+{
+public:
+    BITFIELD RandomizeBotSkins : 1 GCC_PACK(4);
+    TArrayNoInit<class UShader *> CloneSkins GCC_PACK(4);
+    TArrayNoInit<class UShader *> TrandoSkins;
+    FLOAT NextSkinUpdateTime;
+    INT NextBotCloneSkin;
+    INT NextBotTrandoSkin;
+    void execSetCloneSkin(FFrame &Stack, void *Result);
+    void execSetTrandoSkin(FFrame &Stack, void *Result);
+    DECLARE_CLASS(ASkinChanger, AAdminService, 0 | CLASS_Config, ModMPGame)
+    // Overrides
+    virtual INT Tick(FLOAT DeltaTime, ELevelTick TickType);
+    virtual void Spawned();
+
+    struct FSkinEntry
+    {
+        INT NumSeenBy;
+        INT CloneIndex;
+        INT TrandoIndex;
+    };
+
+    static TMap<FString, FSkinEntry> SkinsByPlayerID;
+    static INT LastSkinResetDay;
+    DECLARE_NATIVES(ASkinChanger)
+};
 
 class MODMPGAME_API AMPBot : public ACTBot
 {
@@ -117,9 +191,13 @@ public:
     BITFIELD bPrintCommands:1;
     TArrayNoInit<FString> CurrentCommands GCC_PACK(4);
     class AAdminService* Services;
+    class AMatchManager *MatchManager;
+    class ACombatLogger *CombatLogger;
+    BITFIELD bCombatLogging : 1 GCC_PACK(4);
     void execEventLog(FFrame& Stack, void* Result);
     void execSaveStats(FFrame& Stack, void* Result);
     void execRestoreStats(FFrame& Stack, void* Result);
+    void execResetAllStats(FFrame &Stack, void *Result);
     UBOOL ExecCmd(FString const& Cmd, class APlayerController* PC)
     {
         DECLARE_NAME(ExecCmd);
@@ -176,14 +254,17 @@ public:
 #if __STATIC_LINK
 
 #define AUTO_INITIALIZE_REGISTRANTS_MODMPGAME \
-	AAdminService::StaticClass(); \
-	ABotSupport::StaticClass(); \
-	AMPBot::StaticClass(); \
-	AAdminControl::StaticClass(); \
-	APatrolPoint::StaticClass(); \
-	ASmallNavigationPoint::StaticClass(); \
-	AInventorySpot::StaticClass(); \
-	UExportPathsCommandlet::StaticClass(); \
+    AAdminService::StaticClass();             \
+    ABotSupport::StaticClass();               \
+    ACombatLogger::StaticClass();             \
+    AMatchManager::StaticClass();             \
+    ASkinChanger::StaticClass();              \
+    AMPBot::StaticClass();                    \
+    AAdminControl::StaticClass();             \
+    APatrolPoint::StaticClass();              \
+    ASmallNavigationPoint::StaticClass();     \
+    AInventorySpot::StaticClass();            \
+    UExportPathsCommandlet::StaticClass();
 
 #endif // __STATIC_LINK
 

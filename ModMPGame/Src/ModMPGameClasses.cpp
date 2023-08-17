@@ -25,6 +25,29 @@ LINK_NATIVES(AAdminService);
 
 IMPLEMENT_CLASS(ABotSupport);
 
+IMPLEMENT_CLASS(ACombatLogger);
+FNativeEntry<ACombatLogger> ACombatLogger::StaticNativeMap[] = {
+	MAP_NATIVE(LogEvent,0)
+	{NULL,NULL}
+};
+LINK_NATIVES(ACombatLogger);
+
+IMPLEMENT_CLASS(AMatchManager);
+FNativeEntry<AMatchManager> AMatchManager::StaticNativeMap[] = {
+	MAP_NATIVE(SetPlayerReadyState,0)
+	MAP_NATIVE(GetPlayerReadyState,0)
+	{NULL,NULL}
+};
+LINK_NATIVES(AMatchManager);
+
+IMPLEMENT_CLASS(ASkinChanger);
+FNativeEntry<ASkinChanger> ASkinChanger::StaticNativeMap[] = {
+	MAP_NATIVE(SetCloneSkin,0)
+	MAP_NATIVE(SetTrandoSkin,0)
+	{NULL,NULL}
+};
+LINK_NATIVES(ASkinChanger);
+
 IMPLEMENT_CLASS(AMPBot);
 FNativeEntry<AMPBot> AMPBot::StaticNativeMap[] = {
 	MAP_NATIVE(UpdatePawnAccuracy,0)
@@ -37,6 +60,7 @@ FNativeEntry<AAdminControl> AAdminControl::StaticNativeMap[] = {
 	MAP_NATIVE(EventLog,0)
 	MAP_NATIVE(SaveStats,0)
 	MAP_NATIVE(RestoreStats,0)
+	MAP_NATIVE(ResetAllStats,0)
 	{NULL,NULL}
 };
 LINK_NATIVES(AAdminControl);

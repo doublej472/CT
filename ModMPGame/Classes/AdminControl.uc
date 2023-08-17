@@ -10,12 +10,23 @@ var() config bool   DoStatLogging;
 var bool          bPrintCommands;  // Commands are not executed but instead displayed (e.g. when the 'help' command is used)
 var array<string> CurrentCommands; // Only used as temporary storage when bPrintCommands == true
 var AdminService  Services;        // Linked list of all currently active services
+var MatchManager MatchManager;
+var CombatLogger CombatLogger;
+
+var bool bCombatLogging;
 
 native final function EventLog(coerce string Msg, name Tag);
 native final function SaveStats(PlayerController PC);
 native final function RestoreStats(PlayerController PC);
+native final function ResetAllStats();
 
 function Init(){
+	local AdminControl GS;
+
+	foreach AllActors(class'AdminControl', GS) {
+		Log("@@@@RAV@@@@@ GS Entity: "@GS);
+	}
+
 	if(DoStatLogging)
 		Super.Init();
 }
@@ -32,10 +43,47 @@ function DisconnectEvent(PlayerReplicationInfo Who){
 	Super.DisconnectEvent(Who);
 }
 
+function KillEvent(string Killtype, PlayerReplicationInfo Killer, PlayerReplicationInfo Victim, class<DamageType> Damage){
+	local PlayerController KillerPC, VictimPC;
+	local MPPlayerReplicationInfo KillerPRI;
+	local Pawn VictimPawn;
+
+	
+	
+
+	if(Victim.bBot || Victim.bOnlySpectator || ((Killer != None) && Killer.bBot))
+		return;
+
+	KillerPC = PlayerController(Killer.Owner);
+	VictimPC = PlayerController(Victim.Owner);
+
+	if(Killer == Victim){
+		VictimPC.ClientMessage("You killed yourself!");
+	}else if(KillerPC.Pawn.IsDead()){
+    	VictimPC.ClientMessage(Killer.GetPlayerName()@"killed you from the grave!");
+    }else{
+		VictimPC.ClientMessage(Killer.GetPlayerName()@"has"@KillerPC.Pawn.Health@"health remaining and"@KillerPC.Pawn.Shields@"shields remaining.");
+	}
+
+	KillerPRI = MPPlayerReplicationInfo(Killer);
+	VictimPawn = VictimPC.Pawn;
+	VictimPC.ClientMessage("You were hit in the"@VictimPawn.LastHitBone);
+
+	Super.KillEvent(Killtype, Killer, Victim, Damage);
+}
+
+function ScoreEvent(PlayerReplicationInfo Who, float Points, string Desc) {
+	Super.ScoreEvent(Who, Points, Desc);
+}
+
 function PostBeginPlay(){
 	local int i;
 	local class<AdminService> ServiceClass;
 	local AdminService Service;
+	local MatchManager mm;
+	local CombatLogger cl;
+
+	Super.PostBeginPlay();
 
 	if(Level.Game.GameStats != None && Level.Game.GameStats != self){
 		Warn("GameStats will be replaced by AdminControl!");
@@ -89,7 +137,22 @@ function PostBeginPlay(){
 		Service.AdminControl = self;
 		Service.nextAdminService = Services;
 		Services = Service;
+
+		mm = MatchManager(Service);
+		if(mm != None) {
+			MatchManager = mm;
+		}
+
+		cl = CombatLogger(Service);
+		if(cl != None) {
+			CombatLogger = cl;
+			bCombatLogging = true;
+		}
 	}
+
+	Log("@@@@RAV@@@@ MatchManager instance: "@MatchManager);
+	Log("@@@@RAV@@@@ CombatLogger instance: "@CombatLogger);
+
 }
 
 function bool DispatchCmd(PlayerController PC, string Cmd){

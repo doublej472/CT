@@ -3,6 +3,8 @@ class AdminAccessControl extends AccessControl config(ModMPGame);
 var protected config string AdminPassword; // Override because the base class property is private
 
 function PostBeginPlay(){
+	Super.PostBeginPlay();
+
 	SaveConfig(); // Generating ini entry if it wasn't there already for convenience
 }
 
