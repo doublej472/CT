@@ -194,6 +194,14 @@ function bool ExecCmd(String Cmd, optional PlayerController PC){
 		return true;
 	}else if(ParseCommand(Cmd, "SWITCHMAP")){
 		Level.Game.Broadcast(self, "Switching map");
+		StringParam = "";
+		ParseStringParam(Cmd, "game=", StringParam);
+		if (StringParam == "") {
+			Cmd $= "?game=ModMPGame.TAGCTFGame?MapListType=MPGame.MapListCaptureTheFlag?TimeLimit=0?GoalScore=3";
+		} else if (StringParam == "MPGame.CTFGame") {
+			Repl(Cmd, "MPGame.", "ModMPGame.TAG");
+		}
+
 		Level.ServerTravel(Cmd, false);
 
 		return true;

@@ -32,7 +32,7 @@ function Init(){
 }
 
 function ConnectEvent(PlayerReplicationInfo Who){
-	EventLog(Who.PlayerName $ " entered the game", 'Join');
+	EventLog(Who.PlayerName $ " entered the game and has id:"@Who.PlayerID, 'Join');
 	RestoreStats(PlayerController(Who.Owner));
 	Super.ConnectEvent(Who);
 }
