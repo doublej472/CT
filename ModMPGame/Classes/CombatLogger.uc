@@ -9,10 +9,6 @@ var bool bLogging;
 native final function LogEvent(coerce string Msg, name Tag);
 
 function StartLogging() {
-    local String repOut, trandoOut;
-    local GameReplicationInfo GRI;
-    local array<PlayerReplicationInfo> aPRI;
-    local int i;
     bLogging = true;
 
     LogEvent(AdminControl.GetMapFilename(), 'Map');
@@ -21,6 +17,17 @@ function StartLogging() {
     if (TAGCTFGame(Level.Game) == None) {
         LogEvent("Non TAG gamemode will lead to less detailed reports.", 'Warn');
     }
+
+    LogTeams();
+
+    LogEvent("Match is live", 'StartGame');
+}
+
+function LogTeams() {
+    local String repOut, trandoOut;
+    local GameReplicationInfo GRI;
+    local array<PlayerReplicationInfo> aPRI;
+    local int i;
 
     repOut = "";
     trandoOut = "";
@@ -34,10 +41,8 @@ function StartLogging() {
         }
     }
 
-    LogEvent("0 :"@repOut, 'Team');
-    LogEvent("1 :"@trandoOut, 'Team');
-
-    LogEvent("Match is live", 'StartGame');
+    LogEvent("team_list 0 :"@repOut, 'Team');
+    LogEvent("team_list 1 :"@trandoOut, 'Team');
 }
 
 cpptext 

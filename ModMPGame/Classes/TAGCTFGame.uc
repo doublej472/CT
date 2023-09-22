@@ -30,28 +30,54 @@ function ChangeName( Controller Other, coerce string S, bool bNameChange ) {
 }
 
 function KillEvent(string Killtype, PlayerReplicationInfo Killer, PlayerReplicationInfo Victim, class<DamageType> Damage) {
-    local Pawn VictimPawn;
-    local MPPlayerReplicationInfo KillerPRI;
-    local PlayerController KillerPC;
-    local Controller VictimPC;
+    // local Pawn VictimPawn;
+    // local MPPlayerReplicationInfo KillerPRI;
+    // local PlayerController KillerPC;
+    // local Controller VictimPC;
 
     Super.KillEvent(Killtype, Killer, Victim, Damage);
 
-    KillerPRI = MPPlayerReplicationInfo(Killer);
-    KillerPC = PlayerController(Killer.Owner);
-    VictimPC = Controller(Victim.Owner);
-    VictimPawn = VictimPC.Pawn;
+    // KillerPRI = MPPlayerReplicationInfo(Killer);
+    // KillerPC = PlayerController(Killer.Owner);
+    // VictimPC = Controller(Victim.Owner);
+    // VictimPawn = VictimPC.Pawn;
+    // if (KillerPRI != None) {
+    //     if (VictimPawn.LastHitBone == 'head') {
+    //         KillerPRI.headcount++;
+    //     }
+
+    //     if (AdminControl.CombatLogger != None && AdminControl.CombatLogger.bLogging) {
+    //             AdminControl.CombatLogger.LogEvent(Killer.PlayerID@Victim.PlayerID@VictimPawn.LastHitBone@Killer.Score, 'Kill');
+    //         }
+    //     }
+
+    // KillerPC.ClientMessage('You now have'@KillerPRI.headcount@"headshots out of"@KillerPRI.Kills + 1@"kills.");
+}
+
+function ScoreKill(Controller Killer, Controller Other) {
+	local Pawn VictimPawn;
+	local MPPlayerReplicationInfo KillerMPPRI;
+	local PlayerReplicationInfo KillerPRI, VictimPRI;
+	local PlayerController KillerPC;
+	
+	Super.ScoreKill(Killer, Other);
+
+    KillerPC = PlayerController(Killer);
+	KillerPRI = KillerPC.PlayerReplicationInfo;
+	VictimPRI = Other.PlayerReplicationInfo;
+	KillerMPPRI = MPPlayerReplicationInfo(KillerPRI);
+    VictimPawn = Other.Pawn;
     if (KillerPRI != None) {
         if (VictimPawn.LastHitBone == 'head') {
-            KillerPRI.headcount++;
+            KillerMPPRI.headcount++;
         }
 
         if (AdminControl.CombatLogger != None && AdminControl.CombatLogger.bLogging) {
-                AdminControl.CombatLogger.LogEvent(Killer.PlayerID@Victim.PlayerID@VictimPawn.LastHitBone@Killer.Score, 'Kill');
+                AdminControl.CombatLogger.LogEvent(KillerPRI.PlayerID@VictimPRI.PlayerID@VictimPawn.LastHitBone@KillerPRI.Score, 'Kill');
             }
         }
 
-    KillerPC.ClientMessage('You now have'@KillerPRI.headcount@"headshots out of"@KillerPRI.Kills + 1@"kills.");
+    KillerPC.ClientMessage('You now have'@KillerMPPRI.headcount@"headshots out of"@KillerMPPRI.Kills@"kills.");
 }
 
 function ScoreFlag(Controller Scorer, GameObject theFlag)
@@ -179,4 +205,21 @@ function Logout(Controller Exiting) {
 	if (AdminControl.CombatLogger != None && AdminControl.CombatLogger.bLogging) {
         AdminControl.CombatLogger.LogEvent(Exiting.PlayerReplicationInfo.PlayerID, 'Leave');
     }
+}
+
+function bool ChangeTeam(Controller Other, int num, bool bNewTeam, optional bool bSwitch) {
+	if (AdminControl.CombatLogger != None && AdminControl.CombatLogger.bLogging) {
+        AdminControl.CombatLogger.LogEvent("team_swap"@Other.PlayerReplicationInfo.PlayerID@num, 'Team');
+		AdminControl.CombatLogger.LogTeams();
+    }
+
+	return Super.ChangeTeam(Other, num, bNewTeam, bSwitch);
+}
+
+function ProcessServerTravel( string URL, bool bItems ) {
+	if (AdminControl.CombatLogger != None && AdminControl.CombatLogger.bLogging) {
+        AdminControl.CombatLogger.LogEvent("mapchange", 'EndGame');
+    }
+
+	Super.ProcessServerTravel(URL, bItems);
 }

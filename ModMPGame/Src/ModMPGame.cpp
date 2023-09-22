@@ -192,6 +192,7 @@ void AAdminControl::execSaveStats(FFrame& Stack, void* Result){
 	Stats.Score       = PC->PlayerReplicationInfo->Score;
 	Stats.GoalsScored = PC->PlayerReplicationInfo->GoalsScored;
 	Stats.bIsReady = false;
+	Stats.PlayerID = PC->PlayerReplicationInfo->PlayerID;
 }
 
 void AAdminControl::execRestoreStats(FFrame& Stack, void* Result){
@@ -208,15 +209,21 @@ void AAdminControl::execRestoreStats(FFrame& Stack, void* Result){
 		// It doesn't make sense to restore anything else here as the host cannot leave and rejoin without stopping the server
 	}else{
 		FString PlayerID = GetPlayerID(PC);
-		const FPlayerStats& Stats = CurrentGamePlayersByID[*PlayerID];
+		// const FPlayerStats& Stats = CurrentGamePlayersByID[*PlayerID];
+		const FPlayerStats *inStats = CurrentGamePlayersByID.Find(*PlayerID);
 
 		PlayerIDsByController[PC] = PlayerID;
 
-		PC->PlayerReplicationInfo->bAdmin      = Stats.bAdmin;
-		PC->PlayerReplicationInfo->Kills       = Stats.Kills;
-		PC->PlayerReplicationInfo->Deaths      = Stats.Deaths;
-		PC->PlayerReplicationInfo->Score       = Stats.Score;
-		PC->PlayerReplicationInfo->GoalsScored = Stats.GoalsScored;
+		if (inStats != NULL)
+		{
+
+			PC->PlayerReplicationInfo->bAdmin = inStats->bAdmin;
+			PC->PlayerReplicationInfo->Kills = inStats->Kills;
+			PC->PlayerReplicationInfo->Deaths = inStats->Deaths;
+			PC->PlayerReplicationInfo->Score = inStats->Score;
+			PC->PlayerReplicationInfo->GoalsScored = inStats->GoalsScored;
+			PC->PlayerReplicationInfo->PlayerID = inStats->PlayerID;
+		}
 	}
 }
 
