@@ -120,16 +120,22 @@ INT UServerCommandletMain(){
 		FLOAT MaxTickRate = GEngine->GetMaxTickRate();
 
 		if(MaxTickRate > 0.0f){
+			LARGE_INTEGER TickTime;
 			LARGE_INTEGER WaitTime;
+			LARGE_INTEGER CurrentTime;
 			LARGE_INTEGER TargetTime;
-			WaitTime.QuadPart = Frequency.QuadPart / MaxTickRate;
-			TargetTime.QuadPart = NewTime.QuadPart + WaitTime.QuadPart;
+			QueryPerformanceCounter(&CurrentTime);
+
+			TickTime.QuadPart = Frequency.QuadPart / MaxTickRate;
+			TargetTime.QuadPart = NewTime.QuadPart + TickTime.QuadPart;
+			WaitTime.QuadPart = TargetTime.QuadPart - CurrentTime.QuadPart;
 
 			// If we are waiting for over 1 milliseconds
 			// Try sleeping, leaving 1 millisecond for busy loop
 			DOUBLE WaitTimeDouble = (DOUBLE) WaitTime.QuadPart / (DOUBLE) Frequency.QuadPart;
 			if (WaitTimeDouble > 0.001) {
 				// select() somehow has the most accurate sleep, so use that
+				//GLog->Logf("Sleeping for %f seconds", WaitTimeDouble);
 				TIMEVAL tv;
 				tv.tv_sec = 0L;
 				tv.tv_usec = (WaitTimeDouble - 0.001) * 1000000;
