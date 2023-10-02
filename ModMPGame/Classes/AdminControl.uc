@@ -80,9 +80,17 @@ function KillEvent(string KillType, PlayerReplicationInfo Killer, PlayerReplicat
 			// Health can be negative but we only show 0 in that case
 			Health = FClamp(KillerController.Pawn.Health / KillerController.Pawn.MaxHealth * 100, 0.0, 100.0);
 			Shields = KillerController.Pawn.Shields / KillerController.Pawn.MaxShields * 100;
-		}
 
-		VictimController.ClientMessage(Killer.PlayerName $ " had " $ Health $ "% Health and " $ Shields $ " % Shields");
+			if (KillerController.Pawn.IsDead()) {
+				VictimController.ClientMessage(Killer.PlayerName $ " killed you from the grave!");
+			}
+
+			VictimController.ClientMessage(Killer.PlayerName $ " had " $ Health $ "% Health and " $ Shields $ " % Shields");
+
+			if (VictimController.Pawn != None) {
+				VictimController.ClientMessage("You were hit in the " $ VictimController.Pawn.LastHitBone);
+			}
+		}
 	}
 }
 
