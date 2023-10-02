@@ -19,6 +19,7 @@ native final function EventLog(coerce string Msg, name Tag);
 native final function SaveStats(PlayerController PC);
 native final function RestoreStats(PlayerController PC);
 native final function ReleaseAllCDKeys();
+native final function ResetAllStats();
 
 function Init(){
 	if(DoStatLogging)

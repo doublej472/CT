@@ -99,6 +99,39 @@ public:
 };
 
 
+class MODMPGAME_API AMatchManager : public AAdminService
+{
+public:
+    INT nNumReadyPlayers;
+    BITFIELD bReadyCheckActive:1 GCC_PACK(4);
+    void execSetPlayerReadyState(FFrame& Stack, void* Result);
+    void execGetPlayerReadyState(FFrame& Stack, void* Result);
+    INT GetActivePlayerCount()
+    {
+        DECLARE_NAME(GetActivePlayerCount);
+        struct {
+            INT ReturnValue;
+        } Parms;
+        Parms.ReturnValue=0;
+        ProcessEvent(NGetActivePlayerCount, &Parms);
+        return Parms.ReturnValue;
+    }
+    void PrintActivePlayerReadyState()
+    {
+        DECLARE_NAME(PrintActivePlayerReadyState);
+        ProcessEvent(NPrintActivePlayerReadyState, NULL);
+    }
+    void LiveReset()
+    {
+        DECLARE_NAME(LiveReset);
+        ProcessEvent(NLiveReset, NULL);
+    }
+    DECLARE_CLASS(AMatchManager,AAdminService,0|CLASS_Config,ModMPGame)
+    void TryFinishReadyCheck();
+    DECLARE_NATIVES(AMatchManager)
+};
+
+
 class MODMPGAME_API ASkinChanger : public AAdminService
 {
 public:
@@ -158,6 +191,7 @@ public:
     void execSaveStats(FFrame& Stack, void* Result);
     void execRestoreStats(FFrame& Stack, void* Result);
     void execReleaseAllCDKeys(FFrame& Stack, void* Result);
+    void execResetAllStats(FFrame& Stack, void* Result);
     UBOOL ExecCmd(FString const& Cmd, class APlayerController* PC)
     {
         DECLARE_NAME(ExecCmd);
@@ -216,6 +250,7 @@ public:
 #define AUTO_INITIALIZE_REGISTRANTS_MODMPGAME \
 	AAdminService::StaticClass(); \
 	ABotSupport::StaticClass(); \
+	AMatchManager::StaticClass(); \
 	ASkinChanger::StaticClass(); \
 	AMPBot::StaticClass(); \
 	AAdminControl::StaticClass(); \

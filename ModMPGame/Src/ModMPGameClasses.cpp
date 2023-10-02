@@ -31,6 +31,14 @@ FNativeEntry<ABotSupport> ABotSupport::StaticNativeMap[] = {
 };
 LINK_NATIVES(ABotSupport);
 
+IMPLEMENT_CLASS(AMatchManager);
+FNativeEntry<AMatchManager> AMatchManager::StaticNativeMap[] = {
+	MAP_NATIVE(SetPlayerReadyState,0)
+	MAP_NATIVE(GetPlayerReadyState,0)
+	{NULL,NULL}
+};
+LINK_NATIVES(AMatchManager);
+
 IMPLEMENT_CLASS(ASkinChanger);
 FNativeEntry<ASkinChanger> ASkinChanger::StaticNativeMap[] = {
 	MAP_NATIVE(SetCloneSkin,0)
@@ -52,6 +60,7 @@ FNativeEntry<AAdminControl> AAdminControl::StaticNativeMap[] = {
 	MAP_NATIVE(SaveStats,0)
 	MAP_NATIVE(RestoreStats,0)
 	MAP_NATIVE(ReleaseAllCDKeys,0)
+	MAP_NATIVE(ResetAllStats,0)
 	{NULL,NULL}
 };
 LINK_NATIVES(AAdminControl);
