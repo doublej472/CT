@@ -91,7 +91,7 @@ function CancelReadyCheck(PlayerController PC){
     }
 
     nNumReadyPlayers = 0;
-    bReadyCheckActive = false;    
+    bReadyCheckActive = false;
   }
 }
 
@@ -145,7 +145,7 @@ event LiveReset(){
     ForEach DynamicActors(Class 'Projectile', Proj){
         Proj.Destroy();
     }
-    
+
     //Reset the stats on the PRIs and FPlayerStats structs
     ForEach DynamicActors(Class'PlayerController', PC){
         PC.PlayerReplicationInfo.Deaths = 0;

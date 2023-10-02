@@ -1068,7 +1068,7 @@ void AMatchManager::execSetPlayerReadyState(FFrame& Stack, void* Result)
 	if (PC->Player) {
 		if (PC->Player->IsA(UViewport::StaticClass())) {
 			return;
-		}	
+		}
 	}
 
 	FString PlayerID = GetPlayerID(PC);
