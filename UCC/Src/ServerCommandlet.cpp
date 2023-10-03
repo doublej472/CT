@@ -65,49 +65,99 @@ INT UServerCommandletMain(){
 	// Create input thread
 	HANDLE InputThread = CreateThread(NULL, 0, UpdateServerConsoleInput, NULL, 0, NULL);
 
-	DOUBLE OldTime = appSeconds();
-	DOUBLE SecondStartTime = OldTime;
 	INT TickCount = 0;
 
 	GIsRunning = 1;
 
+	// Use QPC for tracking time
+	LARGE_INTEGER OldTime, SecondStartTime;
+	LARGE_INTEGER Frequency;
+
+	QueryPerformanceFrequency(&Frequency);
+	QueryPerformanceCounter(&OldTime);
+	SecondStartTime.QuadPart = OldTime.QuadPart;
+
+	// Enforce optional maximum tick rate
+	FLOAT MaxTickRate = GEngine->GetMaxTickRate();
+
 	// Main loop
 	while(GIsRunning && !GIsRequestingExit){
-		DOUBLE NewTime = appSeconds();
+		LARGE_INTEGER NewTime;
+		QueryPerformanceCounter(&NewTime);
 
 		if(CurrentConsoleCommand){
 			if(appStricmp(CurrentConsoleCommand, "CLS") == 0) // In case user wants to clear screen. Can be useful for testing.
 				system("cls"); // Hate using system but it's ok here
+			else if(appStricmp(CurrentConsoleCommand, "GETMAXTICKRATE") == 0)
+				GLog->Logf("%f", MaxTickRate);
+			else if (appStrnicmp(CurrentConsoleCommand, "SETMAXTICKRATE", 14) == 0) {
+				INT Strlen = appStrlen(CurrentConsoleCommand);
+				if (Strlen > 15) {
+					FLOAT NewTickRate = appAtof(CurrentConsoleCommand+15);
+					if (NewTickRate > 1000.0f || NewTickRate < 0.0f) {
+						GWarn->Log("Tickrate must be in range 0.0 -> 1000.0");
+					} else {
+						MaxTickRate = NewTickRate;
+						GLog->Logf("Max tickrate changed to %f", MaxTickRate);
+					}
+				}
+			}
 			else if(!GEngine->Exec(CurrentConsoleCommand, *GWarn))
 				GWarn->Log(LocalizeError("Exec", "Core"));
 
 			CurrentConsoleCommand = NULL;
 		}
 
+		LARGE_INTEGER ElapsedTime;
+		ElapsedTime.QuadPart = NewTime.QuadPart - OldTime.QuadPart;
+
+		// Calculate the deltatime in milliseconds
+		DOUBLE tickDelta = ((DOUBLE) ElapsedTime.QuadPart / (DOUBLE) Frequency.QuadPart);
+
 		// Update the world
-		GEngine->Tick(NewTime - OldTime);
+		GEngine->Tick(tickDelta);
 
-		// UEngine::Tick may load a new map and cause the timing to be reset (this is a good thing)
-		if(appSeconds() < NewTime)
-			SecondStartTime = NewTime = appSeconds();
+		//GLog->Logf("delta: %f", tickDelta);
 
-		OldTime = NewTime;
-
+		OldTime.QuadPart = NewTime.QuadPart;
 		++TickCount;
 
-		if(OldTime > SecondStartTime + 1.0){
-			GEngine->CurrentTickRate = TickCount / (OldTime - SecondStartTime);
-			SecondStartTime = OldTime;
+		// If it has been 1 second since the last update
+		if(OldTime.QuadPart > SecondStartTime.QuadPart + Frequency.QuadPart){
+			GEngine->CurrentTickRate = TickCount / ((DOUBLE) (OldTime.QuadPart - SecondStartTime.QuadPart) / (DOUBLE) Frequency.QuadPart);
+			SecondStartTime.QuadPart = OldTime.QuadPart;
 			TickCount = 0;
+			//GLog->Logf("Tickrate: %f", GEngine->CurrentTickRate);
 		}
 
-		// Enforce optional maximum tick rate
-		FLOAT MaxTickRate = GEngine->GetMaxTickRate();
-
 		if(MaxTickRate > 0.0f){
-			FLOAT Delta = (1.0f / MaxTickRate) - (appSeconds() - OldTime);
+			LARGE_INTEGER TickTime;
+			LARGE_INTEGER WaitTime;
+			LARGE_INTEGER CurrentTime;
+			LARGE_INTEGER TargetTime;
+			QueryPerformanceCounter(&CurrentTime);
 
-			appSleep(Delta > 0.0f ? Delta : 0.0f);
+			TickTime.QuadPart = Frequency.QuadPart / MaxTickRate;
+			TargetTime.QuadPart = NewTime.QuadPart + TickTime.QuadPart;
+			WaitTime.QuadPart = TargetTime.QuadPart - CurrentTime.QuadPart;
+
+			// If we are waiting for over 1 milliseconds
+			// Try sleeping, leaving 1 millisecond for busy loop
+			DOUBLE WaitTimeDouble = (DOUBLE) WaitTime.QuadPart / (DOUBLE) Frequency.QuadPart;
+			if (WaitTimeDouble > 0.001) {
+				//GLog->Logf("Sleeping for %f seconds", WaitTimeDouble);
+				appSleep(WaitTimeDouble - 0.001);
+			}
+
+			// Busy loop until next tick needs to be processed, more accurate
+			while (true) {
+				LARGE_INTEGER CurrentTime;
+				QueryPerformanceCounter(&CurrentTime);
+
+				if (CurrentTime.QuadPart >= TargetTime.QuadPart) {
+					break;
+				}
+			}
 		}
 	}
 
