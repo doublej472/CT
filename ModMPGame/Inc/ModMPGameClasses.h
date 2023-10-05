@@ -99,6 +99,38 @@ public:
 };
 
 
+class MODMPGAME_API AHitMarkers : public AAdminService
+{
+public:
+    void SendHitMessage(class APlayerController* Target, FString const& Victim, FString const& Part, FLOAT Damage)
+    {
+        DECLARE_NAME(SendHitMessage);
+        struct {
+            class APlayerController* Target;
+            FString Victim;
+            FString Part;
+            FLOAT Damage;
+        } Parms;
+        Parms.Target=Target;
+        Parms.Victim=Victim;
+        Parms.Part=Part;
+        Parms.Damage=Damage;
+        ProcessEvent(NSendHitMessage, &Parms);
+    }
+    DECLARE_CLASS(AHitMarkers,AAdminService,0|CLASS_Config,ModMPGame)
+	struct FHitEntry{
+		FLOAT LastHit;
+		FLOAT LastHealth;
+		FLOAT LastShield;
+	};
+	static TMap<FString, FHitEntry> LastHitByPlayerID;
+
+	// Overrides
+	virtual INT Tick(FLOAT DeltaTime, ELevelTick TickType);
+	virtual void Spawned();
+};
+
+
 class MODMPGAME_API AMatchManager : public AAdminService
 {
 public:
@@ -250,6 +282,7 @@ public:
 #define AUTO_INITIALIZE_REGISTRANTS_MODMPGAME \
 	AAdminService::StaticClass(); \
 	ABotSupport::StaticClass(); \
+	AHitMarkers::StaticClass(); \
 	AMatchManager::StaticClass(); \
 	ASkinChanger::StaticClass(); \
 	AMPBot::StaticClass(); \
