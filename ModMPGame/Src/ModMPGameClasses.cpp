@@ -31,6 +31,8 @@ FNativeEntry<ABotSupport> ABotSupport::StaticNativeMap[] = {
 };
 LINK_NATIVES(ABotSupport);
 
+IMPLEMENT_CLASS(AHitMarkers);
+
 IMPLEMENT_CLASS(AMatchManager);
 FNativeEntry<AMatchManager> AMatchManager::StaticNativeMap[] = {
 	MAP_NATIVE(SetPlayerReadyState,0)
