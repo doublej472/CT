@@ -48,6 +48,16 @@
 				Name="VCPreLinkEventTool"/>
 			<Tool
 				Name="VCResourceCompilerTool"/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
+				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
@@ -88,6 +98,16 @@
 				Name="VCPreLinkEventTool"/>
 			<Tool
 				Name="VCResourceCompilerTool"/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
+				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
 		</Configuration>
 	</Configurations>
 	<References>
@@ -109,6 +129,24 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
 			<File
+				RelativePath=".\Src\AdminControl.cpp">
+			</File>
+			<File
+				RelativePath=".\Src\AdminService.cpp">
+			</File>
+			<File
+				RelativePath=".\Src\Bots.cpp">
+			</File>
+			<File
+				RelativePath=".\Src\ExportPathsCommandlet.cpp">
+			</File>
+			<File
+				RelativePath=".\Src\HitMarkers.cpp">
+			</File>
+			<File
+				RelativePath=".\Src\MatchManager.cpp">
+			</File>
+			<File
 				RelativePath=".\Src\ModMPGame.cpp">
 			</File>
 			<File
@@ -116,6 +154,12 @@
 			</File>
 			<File
 				RelativePath=".\Src\ModMPGamePrivate.h">
+			</File>
+			<File
+				RelativePath=".\Src\MPBot.cpp">
+			</File>
+			<File
+				RelativePath=".\Src\SkinChanger.cpp">
 			</File>
 		</Filter>
 	</Files>
