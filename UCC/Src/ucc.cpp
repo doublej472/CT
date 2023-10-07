@@ -60,12 +60,56 @@ static FString ResolveCommandletClassName(const FString& ClassName, const TArray
 	return ClassName;
 }
 
+class FFeedbackContextCmdCustom : public FFeedbackContextCmd {
+public:
+	void Serialize(const TCHAR* V, EName Event) {
+		guard(FFeedbackContextCmdCustom::Serialize);
+
+		TCHAR Buffer[1024] = "";
+		const TCHAR* Temp = V;
+
+		if (Event == NAME_Title) {
+			SetConsoleTitleA(V);
+			return; // Prevents the server from spamming the player count to the log
+		}
+		else if (Event == NAME_Heading) {
+			std::sprintf(Buffer, "--------------------%s--------------------", V);
+			Temp = Buffer;
+			V = Buffer; // So that the log file also contains the formatted string
+		}
+		else if (Event == NAME_Warning || Event == NAME_ExecWarning || Event == NAME_ScriptWarning || Event == NAME_Error || Event == NAME_Critical) {
+			if (Context)
+				std::sprintf(Buffer, "%s: %s, %s\n", *Context->GetContext(), *FName(Event), V);
+			else
+				std::sprintf(Buffer, "%s: %s\n", *FName(Event), V);
+
+			if (Event == NAME_Error || Event == NAME_Critical)
+				++ErrorCount;
+			else
+				++WarningCount;
+
+			Temp = Buffer;
+		}
+
+		std::printf(Temp);
+		std::printf("\n");
+
+		if (GLog != this)
+			GLog->Log(Event, V);
+
+		if (AuxOut)
+			AuxOut->Log(Event, V);
+
+		unguard;
+	}
+};
+
 int __cdecl main(int argc, char** argv){
 	GIsStarted = 1;
 	int ExitCode = EXIT_SUCCESS;
 	FOutputDeviceFile Log;
 	FOutputDeviceWindowsError Error;
-	FFeedbackContextCmd Warn;
+	FFeedbackContextCmdCustom Warn;
 
 	try{
 		GIsGuarded = 1;
