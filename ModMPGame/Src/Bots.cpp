@@ -12,9 +12,7 @@ enum ENavPtType {
 	NAVPT_PatrolPoint
 };
 
-//MODMPGAME_API APlayerController* GetLocalPlayerController();
-
-APlayerController* GetLocalPlayerController() {
+MODMPGAME_API APlayerController* GetLocalPlayerController() {
 	TObjectIterator<UViewport> It;
 
 	return It ? It->Actor : NULL;
