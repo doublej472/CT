@@ -79,9 +79,9 @@ public:
 		}
 		else if (Event == NAME_Warning || Event == NAME_ExecWarning || Event == NAME_ScriptWarning || Event == NAME_Error || Event == NAME_Critical) {
 			if (Context)
-				std::sprintf(Buffer, "%s: %s, %s\n", *Context->GetContext(), *FName(Event), V);
+				std::sprintf(Buffer, "%s: %s, %s", *Context->GetContext(), *FName(Event), V);
 			else
-				std::sprintf(Buffer, "%s: %s\n", *FName(Event), V);
+				std::sprintf(Buffer, "%s: %s", *FName(Event), V);
 
 			if (Event == NAME_Error || Event == NAME_Critical)
 				++ErrorCount;
