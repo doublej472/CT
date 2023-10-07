@@ -8,4 +8,16 @@ LINK_LIB(ModMPGame)
 
 #include "ModMPGameClasses.h"
 
-MODMPGAME_API APlayerController* GetLocalPlayerController();
+struct FPlayerStats {
+	UBOOL bAdmin;
+	INT   Kills;
+	FLOAT Deaths;
+	FLOAT Score;
+	INT   GoalsScored;
+	UBOOL bIsReady;
+};
+
+static TMap<FString, FPlayerStats> CurrentGamePlayersByID;
+static AAdminControl* GAdminControl = NULL;
+
+FStringTemp GetPlayerID(AController* C);
