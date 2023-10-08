@@ -34,6 +34,7 @@ static struct FAdminControlExec : FExec {
 } GAdminControlExec;
 
 void AAdminControl::Spawned() {
+	guard(AAdminControl::Spawned);
 	Super::Spawned();
 
 	GAdminControl = this;
@@ -78,6 +79,7 @@ void AAdminControl::Spawned() {
 		CurrentGamePlayersByID[*PreviousGameAdminIDs[i]].bAdmin = 1;
 
 	PlayerIDsByController.Empty();
+	unguard;
 }
 
 void AAdminControl::Destroy() {

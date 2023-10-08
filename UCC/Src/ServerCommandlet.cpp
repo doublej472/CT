@@ -1,8 +1,12 @@
+#include <stdio.h>
+
 #include "../../Engine/Inc/Engine.h"
+#include "HttpServer.h"
 
 // Variables for ServerCommandlet
 
 static const TCHAR* CurrentConsoleCommand;
+static RepcomStatsServer srv;
 
 /*
  * Allows user input in the console while running a server.
@@ -10,6 +14,7 @@ static const TCHAR* CurrentConsoleCommand;
  * to pause the main loop while waiting for input.
  */
 static DWORD WINAPI UpdateServerConsoleInput(PVOID){
+	printf("Started UpdateServerConsoleInput Thread\n");
 	HANDLE InputHandle = CreateFileA("CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 
 	if(!InputHandle)
@@ -47,6 +52,16 @@ static DWORD WINAPI UpdateServerConsoleInput(PVOID){
 
 	CloseHandle(InputHandle);
 
+	printf("Stopped UpdateServerConsoleInput Thread\n");
+	return 0;
+}
+
+static DWORD WINAPI ServerStatsServer(PVOID) {
+	printf("Started ServerStatsServer Thread\n");
+	
+	srv.Listen();
+
+	printf("Stopped ServerStatsServer Thread\n");
 	return 0;
 }
 
@@ -64,6 +79,7 @@ INT UServerCommandletMain(){
 
 	// Create input thread
 	HANDLE InputThread = CreateThread(NULL, 0, UpdateServerConsoleInput, NULL, 0, NULL);
+	HANDLE ServerStatsThread = CreateThread(NULL, 0, ServerStatsServer, NULL, 0, NULL);
 
 	INT TickCount = 0;
 
@@ -124,10 +140,12 @@ INT UServerCommandletMain(){
 
 		// If it has been 1 second since the last update
 		if(OldTime.QuadPart > SecondStartTime.QuadPart + Frequency.QuadPart){
-			GEngine->CurrentTickRate = TickCount / ((DOUBLE) (OldTime.QuadPart - SecondStartTime.QuadPart) / (DOUBLE) Frequency.QuadPart);
+			float UCCTickRate = TickCount / ((DOUBLE) (OldTime.QuadPart - SecondStartTime.QuadPart) / (DOUBLE) Frequency.QuadPart);
 			SecondStartTime.QuadPart = OldTime.QuadPart;
 			TickCount = 0;
 			//GLog->Logf("Tickrate: %f", GEngine->CurrentTickRate);
+			struct RepcomStats s = {UCCTickRate, GEngine->CurrentTickRate };
+			srv.UpdateStats(s);
 		}
 
 		if(MaxTickRate > 0.0f){
@@ -164,7 +182,9 @@ INT UServerCommandletMain(){
 	GIsRunning = 0;
 
 	WaitForSingleObject(InputThread, INFINITE);
+	WaitForSingleObject(ServerStatsThread, INFINITE);
 	CloseHandle(InputThread);
+	CloseHandle(ServerStatsThread);
 
 	return 0;
 }
