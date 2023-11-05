@@ -53,9 +53,15 @@ function ConnectEvent(PlayerReplicationInfo Who){
 }
 
 function DisconnectEvent(PlayerReplicationInfo Who){
+	local AdminService Service;
 	if(!Who.bBot){
 		EventLog(Who.PlayerName $ " left the game", 'Leave');
 		SaveStats(PlayerController(Who.Owner));
+
+		for(Service = Services; Service != None; Service = Service.nextAdminService){
+			Service.PlayerDisconnectEvent(PlayerController(Who.Owner));
+		}
+
 		Super.DisconnectEvent(Who);
 	}
 }

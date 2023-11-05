@@ -31,6 +31,15 @@ public:
     void execParseStringParam(FFrame& Stack, void* Result);
     void execExecCmd(FFrame& Stack, void* Result);
     void execEventLog(FFrame& Stack, void* Result);
+    void PlayerDisconnectEvent(class APlayerController* PC)
+    {
+        DECLARE_NAME(PlayerDisconnectEvent);
+        struct {
+            class APlayerController* PC;
+        } Parms;
+        Parms.PC=PC;
+        ProcessEvent(NPlayerDisconnectEvent, &Parms);
+    }
     void CommandFeedback(class APlayerController* PC, FString const& Msg, UBOOL DontWriteToLog)
     {
         DECLARE_NAME(CommandFeedback);

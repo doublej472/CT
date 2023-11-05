@@ -37,13 +37,32 @@ static bool __fastcall UClassIsDefaultValueOverride(UObject* Self, DWORD edx, co
  * FPS limit
  */
 
-static FLOAT(__fastcall*OriginalUEngineGetMaxTickRate)(UEngine*, DWORD) = NULL;
+static FLOAT __fastcall EngineGetMaxTickRateOverride(UGameEngine* Self, DWORD Edx)
+{
+	FLOAT retTickRate = 0.0f;
+	ULevel* GLevel = Self->GLevel;
 
-static FLOAT __fastcall EngineGetMaxTickRateOverride(UEngine* Self, DWORD Edx){
-	FLOAT MaxTickRate = OriginalUEngineGetMaxTickRate(Self, Edx);
+	static UBOOL LanPlay = ParseParam(appCmdLine(), TEXT("lanplay"));
 
-	// If the engine doesn't set it's own tick rate (i.e. GetMaxTickRate returns 0), we use FpsLimit instead
-	return MaxTickRate <= 0.0f ? USWRCFix::Instance->FpsLimit : MaxTickRate;
+	if (GLevel && GLevel->DemoRecDriver && !GLevel->DemoRecDriver->ServerConnection && GLevel->NetDriver && !GIsClient)
+	{
+		// We're a dedicated server recording a demo, use the high framerate demo tick.
+		retTickRate = Clamp(LanPlay ? GLevel->DemoRecDriver->LanServerMaxTickRate : GLevel->DemoRecDriver->NetServerMaxTickRate, 20, 60);
+	}
+	else if (GLevel && GLevel->NetDriver && !GIsClient)
+	{
+		// We're a dedicated server, use the LAN or Net tick rate.
+		retTickRate = Clamp(LanPlay ? GLevel->NetDriver->LanServerMaxTickRate : GLevel->NetDriver->NetServerMaxTickRate, 10, 120);
+	}
+	else if (GLevel && GLevel->NetDriver && GLevel->NetDriver->ServerConnection && GLevel->GetLevelInfo()->bCapFramerate)
+	{
+		// We're a network client with bCapFramerate - so cap it.
+		retTickRate = ::Min(USWRCFix::Instance->FpsLimit, GLevel->NetDriver->ServerConnection->CurrentNetSpeed / GLevel->GetLevelInfo()->MoveRepSize);
+	}
+	else
+		retTickRate = USWRCFix::Instance->FpsLimit;
+
+	return retTickRate;
 }
 
 /*
@@ -230,7 +249,7 @@ void USWRCFix::Init(){
 		 * However, this is always zero, meaning no limit.
 		 * This fix patches the vtable of UGameEngine so it returns a custom value specified in the config.
 		 */
-		OriginalUEngineGetMaxTickRate = static_cast<FLOAT(__fastcall*)(UEngine*, DWORD)>(PatchDllClassVTable("Engine.dll", "UGameEngine", "UObject", 49, EngineGetMaxTickRateOverride));
+		PatchDllClassVTable("Engine.dll", "UGameEngine", "UObject", 49, EngineGetMaxTickRateOverride);
 
 		/*
 		 * Fix 5:

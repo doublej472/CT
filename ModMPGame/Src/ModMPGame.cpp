@@ -28,24 +28,18 @@ static TArray<FString>                   PreviousGameAdminIDs;
 static TMap<FString, FPlayerStats>       CurrentGamePlayersByID;
 static TMap<APlayerController*, FString> PlayerIDsByController; // Only needed because PlayerController::Player is NULL when GameInfo::Logout is called
 
-
 static FStringTemp GetPlayerID(AController* C){
 	APlayerController* PC = Cast<APlayerController>(C);
 
-	if(PC){
+	if(PC && PC->Player){
 		// IsA(UNetConnection::StaticClass()) returns false for TcpipConnection - WTF???
 		if(PC->Player->IsA<UViewport>()){
 			return "__HOST__";
-		}else{ // Combine ip address with cd key hash to uniquely identify a player even in the same network
+		}else{
 			UNetConnection* Con = static_cast<UNetConnection*>(PC->Player);
 			FString IP = Con->LowLevelGetRemoteAddress();
 
-			INT Pos = IP.InStr(":", true);
-
-			if(Pos != -1)
-				return IP.Left(Pos) + Con->CDKeyHash;
-
-			return IP + Con->CDKeyHash;
+			return IP;
 		}
 	}else{
 		return FStringTemp("__BOT__") + (C->PlayerReplicationInfo ? *C->PlayerReplicationInfo->PlayerName : "");
@@ -1071,15 +1065,13 @@ void AMatchManager::execSetPlayerReadyState(FFrame& Stack, void* Result)
 	if (!PC)
 		return;
 
-	FString PlayerID;
-
-	if (PC->Player)
-	{
-		if (PC->Player->IsA(UViewport::StaticClass()))
+	if (PC->Player) {
+		if (PC->Player->IsA(UViewport::StaticClass())) {
 			return;
-
-		PlayerID = GetPlayerID(PC);
+		}	
 	}
+
+	FString PlayerID = GetPlayerID(PC);
 
 	// Get the stats for this player, if there is no change needed just return
 	FPlayerStats& Stats = CurrentGamePlayersByID[*PlayerID];

@@ -20,6 +20,22 @@ function bool IsActivePlayer(PlayerController PC){
     return true;
 }
 
+function RecalculateReadyPlayers(){
+    local PlayerController PC;
+
+	nNumReadyPlayers = 0;
+
+    ForEach DynamicActors(Class'PlayerController', PC){
+        if(NetConnection(PC.Player) != None)
+            if(IsActivePlayer(PC) && GetPlayerReadyState(PC))
+				nNumReadyPlayers += 1;
+    }
+}
+
+event PlayerDisconnectEvent(PlayerController PC){
+    RecalculateReadyPlayers();
+}
+
 //Gets the total count of players who need to ready up to begin the match
 event int GetActivePlayerCount(){
     local int nCount;
@@ -43,6 +59,8 @@ event PrintActivePlayerReadyState(){
             if(IsActivePlayer(PC) && !GetPlayerReadyState(PC))
                 Level.Game.Broadcast(self, PC.PlayerReplicationInfo.PlayerName@"is not ready!");
     }
+
+	Level.Game.Broadcast(self, nNumReadyPlayers $ "/" $ GetActivePlayerCount() $ " are ready!");
 }
 
 //Begins the ready check
@@ -53,8 +71,10 @@ function StartReadyCheck(PlayerController PC){
     ReadySound = Sound'RAS_Music.RAS_BattleCues.musRAS_battle02_lp';
     ForEach DynamicActors(Class'PlayerController', P){
         P.ClientPlaySoundLocally(ReadySound);
+		SetPlayerReadyState(P, false);
     }
 
+	nNumReadyPlayers = 0;
     bReadyCheckActive = true;
     SetPlayerReadyState(PC, true);
 }
@@ -157,7 +177,7 @@ event LiveReset(){
 
     //Reset game elapsed time, set the respawn time, and broadcast the live message
     Level.Game.GameReplicationInfo.ElapsedTime = 0;
-    Level.Game.ConsoleCommand("set mpgame respawnwaittime"@GetActivePlayerCount());
+    Level.Game.ConsoleCommand("set mpgame respawnwaittime" @ GetActivePlayerCount() + 2);
     Level.Game.Broadcast(self, "Game is Live!");
 }
 

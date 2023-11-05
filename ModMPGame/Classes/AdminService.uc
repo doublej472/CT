@@ -24,6 +24,8 @@ static final function bool IsLocalPlayer(PlayerController PC){
 	return PC == None || Viewport(PC.Player) != None;
 }
 
+event PlayerDisconnectEvent(PlayerController PC){}
+
 event CommandFeedback(PlayerController PC, string Msg, optional bool DontWriteToLog){
 	if(PC != None)
 		PC.ClientMessage(Msg);
