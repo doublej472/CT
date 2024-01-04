@@ -242,12 +242,6 @@ simulated function Refresh()
 		DisableOption( 6 );
 		DisableOption( 7 );
 		DisableOption( 8 );
-
-		// Disable FPS limit option for clients if the engine caps the frame rate
-		if(Level.NetMode == NM_Client){
-			if(Level.bCapFramerate)
-				DisableOption( 9 );
-		}
 	}
 }
 
@@ -466,7 +460,7 @@ defaultproperties
      Options(6)=(Items=("YES","NO"))
      Options(7)=(Items=("ON","OFF","CYCLE"))
      Options(8)=(Items=("0","1","2","3","4","5","6","7","8","9","10"))
-     Options(9)=(Items=("NONE","30","60","75","100","120","144","240","360"));
+     Options(9)=(Items=("NONE","30","60","75","100","120","144","165","200","240","360"));
      Options(10)=(Items=("AUTO","85","90","95","100","105","110","115","120","125","130"))
      Options(11)=(Items=("0.0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0"))
      Options(12)=(Items=("0.0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0"))
