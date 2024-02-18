@@ -1,5 +1,7 @@
 class ModGameOptionsMenu extends MenuTemplateTitled;
 
+const MOUSE_SENS_STEPS = 0.01;
+
 var() MenuText			Label;
 
 var() MenuSprite		OptionsBorder;
@@ -108,7 +110,7 @@ simulated function int SensitivityToScale( float Sensitivity )
 {
 	local int Scale;
 
-	Scale = int(Sensitivity / 0.5);
+	Scale = int(Sensitivity / MOUSE_SENS_STEPS);
 
 	return Scale;
 }
@@ -117,7 +119,7 @@ simulated function float ScaleToSensitivity( int Scale )
 {
 	local float Sensitivity;
 
-	Sensitivity = float(Scale) * 0.5;
+	Sensitivity = float(Scale) * MOUSE_SENS_STEPS;
 
 	return Sensitivity;
 }
@@ -451,8 +453,8 @@ defaultproperties
      OptionLabels(10)=(Text="FIELD OF VIEW")
      OptionLabels(11)=(Text="WEAPON FOV FACTOR")
      OptionLabels(12)=(Text="VIEW SHAKE")
-     Options(0)=(Items=("1","2","3","4","5","6","7","8","9","10"),Blurred=(PosX=0.77375,PosY=0.12,ScaleX=0.6,ScaleY=0.6),BackgroundBlurred=(PosX=0.77375,PosY=0.12,ScaleX=0.26,ScaleY=0.02666),OnLeft="OnLeft",OnRight="OnRight",Pass=2,Style="ButtonEnumStyle1")
-     Options(1)=(Items=("YES","NO"),Blurred=(PosY=0.16),BackgroundBlurred=(PosY=0.16))
+     Options(0)=(Items=("0.01","0.02","0.03","0.04","0.05","0.06","0.07","0.08","0.09","0.10","0.11","0.12","0.13","0.14","0.15","0.16","0.17","0.18","0.19","0.20","0.21","0.22","0.23","0.24","0.25","0.26","0.27","0.28","0.29","0.30","0.31","0.32","0.33","0.34","0.35","0.36","0.37","0.38","0.39","0.40","0.41","0.42","0.43","0.44","0.45","0.46","0.47","0.48","0.49","0.50","0.51","0.52","0.53","0.54","0.55","0.56","0.57","0.58","0.59","0.60","0.61","0.62","0.63","0.64","0.65","0.66","0.67","0.68","0.69","0.70","0.71","0.72","0.73","0.74","0.75","0.76","0.77","0.78","0.79","0.80","0.81","0.82","0.83","0.84","0.85","0.86","0.87","0.88","0.89","0.90","0.91","0.92","0.93","0.94","0.95","0.96","0.97","0.98","0.99","1.00"),Blurred=(PosX=0.77375,PosY=0.12,ScaleX=0.6,ScaleY=0.6),BackgroundBlurred=(PosX=0.77375,PosY=0.12,ScaleX=0.26,ScaleY=0.02666),OnLeft="OnLeft",OnRight="OnRight",Pass=2,Style="ButtonEnumStyle1")
+	 Options(1)=(Items=("YES","NO"),Blurred=(PosY=0.16),BackgroundBlurred=(PosY=0.16))
      Options(2)=(Items=("ON","OFF"))
      Options(3)=(Items=("ON","OFF"))
      Options(4)=(Items=("ON","OFF"))
@@ -460,7 +462,7 @@ defaultproperties
      Options(6)=(Items=("YES","NO"))
      Options(7)=(Items=("ON","OFF","CYCLE"))
      Options(8)=(Items=("0","1","2","3","4","5","6","7","8","9","10"))
-     Options(9)=(Items=("NONE","30","60","75","100","120","144","165","200","240","360"));
+     Options(9)=(Items=("NONE","30","50","60","75","90","100","120","144","165","200","240","360"));
      Options(10)=(Items=("AUTO","85","90","95","100","105","110","115","120","125","130"))
      Options(11)=(Items=("0.0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0"))
      Options(12)=(Items=("0.0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0"))
